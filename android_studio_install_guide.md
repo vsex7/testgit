@@ -88,11 +88,21 @@ Android Studio Otter 2 引入了多项关键更新，重点提升了 Kotlin 开�
 如果你更喜欢使用命令行，可以用 **管理员权限** 打开 PowerShell，然后依次执行以下命令：
 
 ```powershell
-# 设置 ANDROID_HOME 环境变量
-[System.Environment]::SetEnvironmentVariable('ANDROID_HOME', "$env:LOCALAPPDATA\Android\Sdk", 'User')
+# ⚠️ 重要: 此脚本需要【管理员权限】运行
+# 请右键点击 PowerShell -> "以管理员身份运行"
 
-# 获取当前 Path 并添加 Android 相关路径
-$currentPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+# 检查是否具有管理员权限
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Warning "请以【管理员身份】运行此脚本以修改系统环境变量！"
+    break
+}
+
+# 设置 ANDROID_HOME 系统环境变量
+[System.Environment]::SetEnvironmentVariable('ANDROID_HOME', "$env:LOCALAPPDATA\Android\Sdk", 'Machine')
+
+# 获取系统级 Path 并添加 Android 相关路径
+$currentPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
 $androidPaths = @(
     "$env:LOCALAPPDATA\Android\Sdk\platform-tools",
     "$env:LOCALAPPDATA\Android\Sdk\emulator",
@@ -100,15 +110,20 @@ $androidPaths = @(
 )
 
 foreach ($path in $androidPaths) {
-    if ($currentPath -notlike "*$path*") {
+    # 检查路径是否已存在 (忽略大小写)
+    if ($currentPath -split ';' -notcontains $path) {
         $currentPath += ";$path"
+        Write-Host "准备添加: $path"
     }
 }
 
-[System.Environment]::SetEnvironmentVariable('Path', $currentPath, 'User')
+# 保存更新后的 Path 到系统变量
+[System.Environment]::SetEnvironmentVariable('Path', $currentPath, 'Machine')
 
 # 验证
-Write-Host "环境变量配置完成！请重启 PowerShell 后执行 'adb --version' 验证。"
+Write-Host "✅ 系统环境变量配置完成！"
+Write-Host "⚠️ 注意：你需要【重启所有终端窗口】(包括 VS Code) 才能生效。"
+Write-Host "验证命令: adb --version"
 ```
 
 > **注意**: 如果你的 SDK 安装在其他位置，请将 `$env:LOCALAPPDATA\Android\Sdk` 替换为实际路径。
