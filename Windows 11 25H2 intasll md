@@ -1,0 +1,365 @@
+# Windows 11 25H2 开发环境配置指南 (2025 实战增强版)
+
+**文档元数据**
+- **作者**: vsex7
+- **版本**: v2.0.0
+- **更新日期**: 2025-11-29
+- **适用系统**: Windows 11 25H2 (专业版)
+- **目标用户**: 开发者、系统管理员
+
+> [!IMPORTANT]
+> 本指南专为 Windows 11 25H2 设计。macOS/Linux 用户请参考对应平台的官方文档。
+
+---
+
+## 目录
+
+1. [核心底层：WSL 2 与虚拟化平台](#1-核心底层wsl-2-与虚拟化平台)
+2. [编程语言环境配置](#2-编程语言环境配置)
+3. [移动开发与容器化](#3-移动开发与容器化)
+4. [实战验证：n8n 部署](#4-实战验证n8n-部署)
+5. [总结：环境状态清单](#总结环境状态清单)
+6. [贡献指南](#贡献指南)
+
+---
+
+## 1. 核心底层：WSL 2 与虚拟化平台
+
+本节配置系统虚拟化层，这是 Docker、Android 模拟器和 Linux 子系统的基础。
+
+### 步骤 1.1：安装 PowerShell 7
+
+> [!NOTE]
+> **管理员操作**: 右键点击"开始"菜单 -> 选择 **"终端 (管理员)"**。
+
+```powershell
+winget install --id Microsoft.PowerShell --source winget
+```
+
+验证安装：
+```powershell
+pwsh --version
+```
+
+### 步骤 1.2：安装 WSL 2 与启用虚拟化平台
+
+> [!NOTE]
+> **管理员操作**: **关闭**上一步的窗口，搜索 "PowerShell 7"，右键选择 **"以管理员身份运行"**。
+
+
+#### 安装 WSL 2
+
+```powershell
+wsl --install
+```
+
+> [!IMPORTANT]
+> - `wsl --install` 会自动启用 WSL 相关组件
+> - **系统要求**: WSL 2.0.0+ (检查版本: `wsl --version`)
+
+---
+
+## 🚨 第 1 次重启系统
+
+> [!CAUTION]
+> **操作**: 请手动重启计算机。
+> 
+> **为什么必须重启**: 虚拟化功能需要加载内核模块，只有重启后才能安装 Ubuntu。
+
+---
+
+### 重启后的 WSL 初始化 (关键！)
+
+> [!TIP]
+> **普通用户操作**: 重启后，打开 PowerShell 7 (管理员)，运行以下命令安装 Ubuntu 24.04。
+
+```powershell
+wsl --install Ubuntu-24.04
+```
+
+Ubuntu 窗口会自动弹出。设置完用户名/密码后，**复制以下命令执行**。
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y build-essential curl wget git unzip
+sudo apt autoremove -y
+```
+
+**预期结果**: 所有包成功安装，无报错。
+
+---
+
+## 2. 编程语言环境配置
+
+本节安装主流编程语言运行时及其依赖管理工具。
+
+### 步骤 2.1：Python (含 pip 增强)
+
+🖱️ **[双击]**: 下载 [Python 3.12+ Installer](https://www.python.org/downloads/) 并运行。
+
+> [!WARNING]
+> **兼容性警告**: Python 3.12 是较新版本，部分第三方包可能尚未完全兼容。如需稳定性，可选择 [Python 3.11](https://www.python.org/downloads/)。
+
+**关键设置**:
+- ✅ 务必勾选 `Use admin privileges when installing py.exe`
+- ✅ 务必勾选 `Add python.exe to PATH` (环境变量)
+- **收尾**: 安装结束点击 `Disable path length limit` (禁用路径长度限制)
+
+> [!NOTE]
+> **管理员操作**: 打开 PowerShell 7 (管理员)，验证并升级 pip。
+
+```powershell
+python --version
+python -m pip install --upgrade pip
+python -m pip install --upgrade setuptools wheel
+```
+
+**预期结果**: 
+```text
+Python 3.12.x
+Successfully installed pip-XX.X.X
+```
+
+### 步骤 2.2：OpenJDK 17 (LTS)
+
+🖱️ **[双击]**: 下载并安装 [Microsoft Build of OpenJDK 17 (MSI)](https://aka.ms/download-jdk/microsoft-jdk-17.0.9-windows-x64.msi)。
+
+**安装配置页 (关键步骤)**:
+- 在 "Custom Setup" 界面，找到 `Set JAVA_HOME variable`
+- **操作**: 点击左侧图标，选择 **"Entire feature will be installed on local hard drive"**
+- ⚠️ **务必开启**: 这一步会自动配置 `JAVA_HOME`
+
+**验证安装**:
+```powershell
+java -version
+```
+
+**预期结果**: `openjdk version "17.0.x"`
+
+### 步骤 2.3：Node.js & Git
+
+推荐使用 Winget 安装 **Node.js LTS (当前为 20.x，截至 2025)**。
+
+#### 方式 A：Winget 极速安装 (推荐)
+
+> [!NOTE]
+> **管理员操作**: 在 PowerShell 7 (管理员) 中运行：
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+winget install Git.Git
+```
+
+**预期结果**: 两条命令都显示 "Successfully installed"。
+
+**验证安装**:
+```powershell
+node --version
+git --version
+```
+
+#### 方式 B：图形界面安装 (备选)
+
+- **Node.js**: 下载 [Node.js LTS Installer](https://nodejs.org/)
+- **Git**: 下载 [Git for Windows](https://git-scm.com/download/win)
+
+> [!TIP]
+> **普通用户操作**: 在 PowerShell 7 (普通权限) 中配置 Git。
+
+```powershell
+git config --global user.name "vsex7"
+git config --global user.email "vre9201@gmail.com"
+git config --global core.autocrlf true
+git config --global init.defaultBranch main
+```
+
+**验证配置**:
+```powershell
+git config --list
+```
+
+---
+
+## 3. 移动开发与容器化
+
+本节配置 Android 开发环境和 Docker 容器平台。
+
+### 步骤 3.1：Android Studio
+
+🖱️ **[双击]**: 下载 [Android Studio Installer](https://developer.android.com/studio) (推荐 **Giraffe 2023.3.1 或更新版本**) 并运行。
+
+**推荐资源**: [Antigravity](https://antigravity.google/) (AI Coding Assistant)
+
+**安装选项**: 选择 "Standard" (标准)
+
+**安装后检查**: 首次启动向导完成后，建议进入 **SDK Manager -> SDK Tools**，勾选 **"Android SDK Command-line Tools (latest)"** 并安装。
+
+> [!WARNING]
+> **路径注意**: 如果 `cmdline-tools/latest/bin` 不存在，可能安装的是特定版本路径如 `cmdline-tools/10.0/bin`，请根据实际调整。
+
+> [!NOTE]
+> **管理员操作**: **手动配置环境变量** (关键步骤)
+>
+> 1. 按 `Win + S` 搜索 **"编辑系统环境变量"** 并回车
+> 2. 点击 **"环境变量"** -> **"系统变量"** -> **"新建"**：
+>    - 变量名: `ANDROID_HOME`
+>    - 变量值: `%LOCALAPPDATA%\Android\Sdk`
+> 3. 在 **"Path"** 变量中双击进入，点击 **"新建"** 并分别添加这 3 行：
+>    - `%ANDROID_HOME%\platform-tools`
+>    - `%ANDROID_HOME%\emulator`
+>    - `%ANDROID_HOME%\cmdline-tools\latest\bin`
+
+**验证配置**:
+```powershell
+adb --version
+sdkmanager --version
+```
+
+**预期结果**: 两条命令都显示版本号。
+
+### 步骤 3.2：Docker Desktop
+
+🖱️ **[双击]**: 下载 [Docker Desktop Installer](https://www.docker.com/products/docker-desktop/) 并运行。
+
+> [!IMPORTANT]
+> **关键提示**: 安装向导中，务必勾选 `☑️ Use WSL 2 instead of Hyper-V`
+
+**验证安装**:
+```powershell
+docker --version
+docker compose version
+```
+
+**预期结果**:
+```text
+Docker version 24.x.x
+Docker Compose version v2.x.x
+```
+
+---
+
+## 🚨 第 2 次重启系统
+
+> [!TIP]
+> **操作**: 建议重启以确保 Docker 用户组权限 (docker-users) 和环境变量完全生效。
+
+---
+
+## 4. 实战验证：n8n 部署
+
+本节通过部署 n8n 工作流自动化平台验证所有组件正常工作。
+
+> [!TIP]
+> **普通用户操作**: 打开 PowerShell 7，验证一切是否正常工作。
+
+### 4.1 验证基础命令
+
+```powershell
+# 验证 PowerShell
+$PSVersionTable.PSVersion
+
+# 验证 Python
+python --version
+
+# 验证 Java
+java -version
+
+# 验证 Node.js
+node --version
+
+# 验证 Docker
+docker run hello-world
+
+# 验证 Android 工具
+sdkmanager --version
+adb --version
+```
+
+**预期结果**: 所有命令都显示版本号，Docker 输出 "Hello from Docker!"
+
+### 4.2 部署 n8n (编写配置)
+
+> [!CAUTION]
+> **安全警告**: 本示例配置仅用于**本地开发测试**，绝不可用于生产环境！
+
+运行以下命令，会自动在 `C:\Dev\n8n` 创建项目并生成配置。
+
+```powershell
+New-Item -Path "C:\Dev\n8n" -ItemType Directory -Force
+Set-Location "C:\Dev\n8n"
+
+$content = @"
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    ports:
+      - "5678:5678"
+    environment:
+      # ⚠️ 安全风险: N8N_SECURE_COOKIE=false 仅用于本地开发
+      # 生产环境必须设置为 true 并配置 HTTPS
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: always
+
+volumes:
+  n8n_data:
+"@
+Set-Content -Path "docker-compose.yml" -Value $content -Encoding UTF8
+```
+
+### 4.3 启动服务
+
+```powershell
+docker compose up -d
+```
+
+**预期结果**: `Container n8n-n8n-1  Started`
+
+**验证运行**:
+```powershell
+docker compose ps
+```
+
+**访问**: 打开浏览器访问 `http://localhost:5678`
+
+> [!NOTE]
+> **如果失败**:
+> - 端口冲突：更改 `5678:5678` 为其他端口如 `8080:5678`
+> - 权限问题：以管理员身份重新运行 `docker compose up -d`
+
+---
+
+**参考**: [n8n 安全文档](https://docs.n8n.io/hosting/security/)
+
+---
+
+## 总结：环境状态清单
+
+- ✅ **底层**: WSL 2
+- ✅ **Linux**: Ubuntu 24.04 (开发工具链已安装)
+- ✅ **Python**: 3.12 (Path 已配置，pip 已升级)
+- ✅ **Java**: JDK 17 LTS (JAVA_HOME 已配置)
+- ✅ **Node.js & Git**: LTS 20.x 已安装并配置
+- ✅ **Android**: ADB、模拟器、命令行工具 (sdkmanager) 已配置
+- ✅ **Docker**: WSL 2 后端模式，Compose v2 可用
+
+---
+
+## 贡献指南
+
+欢迎提交 Pull Request 改进本指南！
+
+**贡献流程**:
+1. Fork 本仓库
+2. 创建功能分支: `git checkout -b feature/improvement`
+3. 提交更改: `git commit -m "Add improvement"`
+4. 推送到分支: `git push origin feature/improvement`
+5. 提交 Pull Request
+
+**参考**: [GitHub 贡献指南](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors)
+
+---
+
+**许可**: MIT License  
+**最后更新**: 2025-11-29
